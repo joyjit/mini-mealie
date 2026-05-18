@@ -1,10 +1,11 @@
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 import { WxtVitest } from 'wxt/testing';
 
 export default defineConfig({
     // @ts-expect-error: WxtVitest returns vite@8 PluginOption[] but vitest/config expects vite@7 Plugin types
     plugins: [WxtVitest()],
     test: {
+        exclude: [...configDefaults.exclude, '**/e2e-playwright/**'],
         reporters: ['default', 'html'],
         coverage: {
             enabled: true,
@@ -14,6 +15,7 @@ export default defineConfig({
                 '**/index.ts', // Barrel exports
                 '**/devInit.ts', // Dev-only initialization code
                 '**/types/apiTypes.ts', // Pure TypeScript type definitions
+                '**/e2eMessaging.ts', // E2E message constants only
             ],
             reportOnFailure: true,
         },
