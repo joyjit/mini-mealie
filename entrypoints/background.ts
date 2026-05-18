@@ -1,4 +1,5 @@
 import { miniDebug } from '@/utils/debugLog';
+import { MINI_MEALIE_E2E_RUN_CREATE_RECIPE_MESSAGE } from '@/utils/e2eMessaging';
 
 export default defineBackground(() => {
     let updateTimer: ReturnType<typeof setTimeout> | undefined;
@@ -82,6 +83,39 @@ export default defineBackground(() => {
                 runCreateRecipe(tab);
             }
         });
+    });
+
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+        if (message?.type !== MINI_MEALIE_E2E_RUN_CREATE_RECIPE_MESSAGE) {
+            return;
+        }
+
+        const rawUrl = typeof message.matchUrl === 'string' ? message.matchUrl.trim() : '';
+        const matchUrl = rawUrl.length > 0 ? rawUrl.split('#')[0] : undefined;
+
+        const finish = (tab: chrome.tabs.Tab | undefined) => {
+            if (!tab?.id || !tab.url || isRestrictedUrl(tab.url)) {
+                sendResponse({ ok: false, error: 'no_valid_tab' });
+                return;
+            }
+            runCreateRecipe(tab);
+            sendResponse({ ok: true });
+        };
+
+        if (matchUrl) {
+            chrome.tabs.query({}, (tabs) => {
+                void chrome.runtime.lastError;
+                const tab = tabs.find((t) => t.url && t.url.split('#')[0] === matchUrl);
+                finish(tab);
+            });
+        } else {
+            chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+                void chrome.runtime.lastError;
+                finish(tabs[0]);
+            });
+        }
+
+        return true;
     });
 
     chrome.contextMenus.onClicked.addListener(async (info, tab) => {
