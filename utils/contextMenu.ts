@@ -12,13 +12,10 @@ export const SWITCH_TO_HTML_MODE_ID = 'switchToHtmlMode';
  * Recipe sites are mostly links/images; `page` alone only fires on blank page chrome,
  * so menus never appear for typical right-clicks.
  */
-export const RECIPE_MENU_CONTEXTS: chrome.contextMenus.ContextType[] = [
-    'page',
-    'frame',
-    'link',
-    'selection',
-    'image',
-];
+export const RECIPE_MENU_CONTEXTS: [
+    `${chrome.contextMenus.ContextType}`,
+    ...`${chrome.contextMenus.ContextType}`[],
+] = ['page', 'frame', 'link', 'selection', 'image'];
 
 // Keep track of child menu IDs for cleanup
 const childMenuIds: string[] = [];
