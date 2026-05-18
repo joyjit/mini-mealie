@@ -1,3 +1,5 @@
+import { getToolbarAction } from './extensionToolbar';
+
 export type ActivityState = {
     activeCount: number;
     label?: string;
@@ -27,13 +29,14 @@ function startSpinner() {
         const frame = SPINNER_FRAMES[spinnerIndex % SPINNER_FRAMES.length];
         spinnerIndex++;
 
-        if (typeof chrome !== 'undefined' && chrome.action?.setBadgeText) {
+        const tb = getToolbarAction();
+        if (tb?.setBadgeText) {
             // TODO: investigate if should be awaited
-            void chrome.action.setBadgeText({ text: frame });
+            void tb.setBadgeText({ text: frame });
         }
-        if (typeof chrome !== 'undefined' && chrome.action?.setBadgeBackgroundColor) {
+        if (tb?.setBadgeBackgroundColor) {
             // TODO: investigate if should be awaited
-            void chrome.action.setBadgeBackgroundColor({ color: '#ec7e19' });
+            void tb.setBadgeBackgroundColor({ color: '#ec7e19' });
         }
     }, SPINNER_INTERVAL_MS);
 }
@@ -45,9 +48,10 @@ function stopSpinner() {
     }
 
     // Reset badge background to default (black)
-    if (typeof chrome !== 'undefined' && chrome.action?.setBadgeBackgroundColor) {
+    const tb = getToolbarAction();
+    if (tb?.setBadgeBackgroundColor) {
         // TODO: investigate if should be awaited
-        void chrome.action.setBadgeBackgroundColor({ color: '#000000' });
+        void tb.setBadgeBackgroundColor({ color: '#000000' });
     }
 }
 
@@ -84,9 +88,10 @@ export async function beginActivity(label: string, opId?: string): Promise<void>
     startedAt = startedAt ?? Date.now();
 
     // Update tooltip
-    if (typeof chrome !== 'undefined' && chrome.action?.setTitle) {
+    const tbTitle = getToolbarAction();
+    if (tbTitle?.setTitle) {
         // TODO: investigate if should be awaited
-        void chrome.action.setTitle({ title: label });
+        void tbTitle.setTitle({ title: label });
     }
 
     // Update context menu to show busy state and disable it
@@ -123,9 +128,10 @@ export async function endActivity(
         }
 
         // Update tooltip with result
-        if (tooltipMessage && typeof chrome !== 'undefined' && chrome.action?.setTitle) {
+        const tbEnd = getToolbarAction();
+        if (tooltipMessage && tbEnd?.setTitle) {
             // TODO: investigate if should be awaited
-            void chrome.action.setTitle({ title: tooltipMessage });
+            void tbEnd.setTitle({ title: tooltipMessage });
         }
 
         await clearActivityState();

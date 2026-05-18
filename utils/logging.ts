@@ -11,7 +11,8 @@ export type LogFeature =
     | 'html-capture'
     | 'network'
     | 'storage'
-    | 'duplicate-detect';
+    | 'duplicate-detect'
+    | 'extension-debug';
 
 export type LogEvent = {
     id: string;
@@ -51,11 +52,27 @@ export function sanitizeUrl(url: string): string {
 /**
  * Sanitize data object - removes anything that looks like a token.
  */
+/** Avoid substring matches that stripped innocent diagnostics (`hasToken`, `recipeAuth`, etc.). */
+function shouldRedactLogDataKey(key: string): boolean {
+    const k = key.toLowerCase();
+    return (
+        k === 'mealieapitoken' ||
+        k === 'authorization' ||
+        k === 'secret' ||
+        k === 'token' ||
+        k === 'apikey' ||
+        k === 'accesstoken' ||
+        k === 'refreshtoken' ||
+        k.endsWith('password') ||
+        k.endsWith('_token') ||
+        k.endsWith('secret')
+    );
+}
+
 function sanitizeData(data: Record<string, unknown>): Record<string, unknown> {
     const result: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(data)) {
-        // Skip keys that might contain sensitive data
-        if (/token|password|secret|auth|key|credential/i.test(key)) {
+        if (shouldRedactLogDataKey(key)) {
             continue;
         }
         if (typeof value === 'string' && value.length > 500) {
@@ -131,7 +148,14 @@ export async function logEvent(
     await writeEvents(trimmed);
 
     // Also log to console for dev visibility
-    const consoleMethod = fullEvent.level === 'error' ? console.error : console.log;
+    const consoleMethod =
+        fullEvent.level === 'error'
+            ? console.error
+            : fullEvent.level === 'warn'
+              ? console.warn
+              : fullEvent.level === 'debug'
+                ? console.debug
+                : console.log;
     consoleMethod(`[${fullEvent.feature}/${fullEvent.action}] ${fullEvent.message}`, fullEvent);
 
     return id;

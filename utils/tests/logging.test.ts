@@ -178,6 +178,8 @@ describe('logging', () => {
 
         it('should write to console based on log level', async () => {
             const consoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
+            const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            const consoleDebug = vi.spyOn(console, 'debug').mockImplementation(() => {});
             const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 
             vi.mocked(chrome.storage.local.get).mockImplementation((_keys, callback) => {
@@ -200,7 +202,17 @@ describe('logging', () => {
                 action: 'test',
                 message: 'Warning message',
             });
-            expect(consoleLog).toHaveBeenCalled();
+            expect(consoleWarn).toHaveBeenCalled();
+
+            consoleWarn.mockClear();
+
+            await logEvent({
+                level: 'debug',
+                feature: 'extension-debug',
+                action: 'test',
+                message: 'Debug message',
+            });
+            expect(consoleDebug).toHaveBeenCalled();
 
             await logEvent({
                 level: 'error',
@@ -211,6 +223,8 @@ describe('logging', () => {
             expect(consoleError).toHaveBeenCalled();
 
             consoleLog.mockRestore();
+            consoleWarn.mockRestore();
+            consoleDebug.mockRestore();
             consoleError.mockRestore();
         });
 
