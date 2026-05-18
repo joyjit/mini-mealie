@@ -70,6 +70,15 @@ export default [
     { ...eslintPluginPrettierRecommended, files: ['**/*.{js,ts,jsx,tsx}'] },
     autoImports,
     {
-        ignores: ['node_modules', '.wxt', '.output', 'coverage', 'html', 'coverage-report'],
+        ignores: [
+            'node_modules',
+            '.wxt',
+            '.output',
+            'coverage',
+            'html',
+            'coverage-report',
+            'e2e-playwright',
+            'test-results',
+        ],
     },
 ];
