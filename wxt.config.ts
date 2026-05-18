@@ -6,12 +6,44 @@ import { defineConfig } from 'wxt';
 // See https://wxt.dev/api/config.html
 export default defineConfig({
     modules: ['@wxt-dev/module-react'],
-    manifest: {
-        permissions: ['storage', 'activeTab', 'contextMenus', 'scripting'],
+    /**
+     * WXT cannot auto-open Firefox when targeting MV3 (see wxt-dev/wxt#230). `pnpm dev:firefox`
+     * sets `WXT_WEB_EXT_DISABLED=true` so the dev server runs; load `.output/firefox-mv3-dev/`
+     * manually from about:debugging.
+     */
+    webExt: {
+        disabled: process.env.WXT_WEB_EXT_DISABLED === 'true',
+    },
+    manifest: ({ browser }) => ({
+        // `tabs`: reliable `tab.url` after `tabs.query` on Firefox + clearer than relying on host
+        // permission edge cases alone when diagnosing missing menu / empty activity logs.
+        permissions: ['storage', 'activeTab', 'contextMenus', 'scripting', 'tabs'],
         host_permissions: ['<all_urls>'],
         description: 'Scrape recipes and save them to a Mealie instance.',
         name: 'Mini Mealie',
-    },
+        commands: {
+            'run-create-recipe': {
+                suggested_key: {
+                    default: 'Ctrl+Shift+M',
+                    mac: 'Command+Shift+M',
+                },
+                description: 'Create recipe from the active tab (same as the context menu action)',
+            },
+        },
+        ...(browser === 'firefox'
+            ? {
+                  browser_specific_settings: {
+                      gecko: {
+                          // Required for chrome.storage.sync / browser.storage.sync under temporary
+                          // loads (about:debugging). Without an explicit ID, Firefox disables sync storage.
+                          // Change only if you publish under a different AMO add-on id.
+                          id: 'mini-mealie@mrshappy0.github.io',
+                          strict_min_version: '109.0',
+                      },
+                  },
+              }
+            : {}),
+    }),
     // https://wxt.dev/guide/essentials/config/auto-imports.html
     imports: {
         eslintrc: { enabled: 9 },
