@@ -219,9 +219,12 @@ describe('checkStorageAndUpdateBadge', () => {
                     callback({ mealieServer: 'https://mealie.tld', mealieApiToken: 'mock-token' });
                 },
             );
-            vi.spyOn(chrome.tabs, 'query').mockResolvedValue([
-                { ...mockActiveTab, url: 'https://recipe.org/refresh-storm' },
-            ]);
+            vi.spyOn(chrome.tabs, 'query').mockImplementation(
+                () =>
+                    Promise.resolve([
+                        { ...mockActiveTab, url: 'https://recipe.org/refresh-storm' },
+                    ]) as unknown as void,
+            );
         });
 
         it('serializes many overlapping refresh calls — each completes scrape and menu update', async () => {
