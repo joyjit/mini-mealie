@@ -1,3 +1,5 @@
+import { openToolbarPopup } from './extensionToolbar';
+
 export function runCreateRecipe(tab: chrome.tabs.Tab) {
     chrome.storage.sync.get<StorageData>(
         [...storageKeys],
@@ -41,7 +43,7 @@ export function runCreateRecipe(tab: chrome.tabs.Tab) {
 
                     // TODO: investigate whether we can await these calls
                     void chrome.storage.local.set({ suggestHtmlMode: true });
-                    void chrome.action.openPopup();
+                    openToolbarPopup();
                     return;
                 }
             }

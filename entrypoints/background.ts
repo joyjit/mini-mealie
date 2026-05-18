@@ -1,3 +1,5 @@
+import { miniDebug } from '@/utils/debugLog';
+
 export default defineBackground(() => {
     let updateTimer: ReturnType<typeof setTimeout> | undefined;
     const scheduleUpdate = () => {
@@ -9,8 +11,15 @@ export default defineBackground(() => {
             updateTimer = undefined;
             // TODO: investigate if we can await this call
             void checkStorageAndUpdateBadge();
-        }, 250);
+        }, 550);
     };
+
+    // Firefox/temporary loads: listeners alone may not run early enough — refresh menus now.
+    miniDebug('background', 'Boot: scheduling dev init + immediate badge/menu refresh');
+    void initDevEnvironment().finally(() => {
+        scheduleUpdate();
+    });
+    void checkStorageAndUpdateBadge();
 
     // Check storage and update badge on startup
     chrome.runtime.onStartup.addListener(async () => {
@@ -34,16 +43,16 @@ export default defineBackground(() => {
 
     // Watch for changes in storage to update badge and context menu
     chrome.storage.onChanged.addListener((changes, area) => {
-        if (area === 'sync') {
-            if (changes.mealieServer || changes.mealieApiToken) {
-                scheduleUpdate();
-            }
-            // Clear cache and immediately update when mode changes
-            // (no delay) to ensure context menu updates instantly
-            if (changes.recipeCreateMode) {
-                clearDetectionCache();
-                void checkStorageAndUpdateBadge();
-            }
+        const credentialsChanged =
+            changes.mealieServer || changes.mealieApiToken || changes.mealieUsername;
+
+        if ((area === 'sync' || area === 'local') && credentialsChanged) {
+            scheduleUpdate();
+        }
+
+        if (area === 'sync' && changes.recipeCreateMode) {
+            clearDetectionCache();
+            scheduleUpdate();
         }
     });
 
@@ -61,6 +70,18 @@ export default defineBackground(() => {
             }
             scheduleUpdate();
         }
+    });
+
+    chrome.commands.onCommand.addListener((command) => {
+        if (command !== 'run-create-recipe') return;
+
+        chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+            void chrome.runtime.lastError;
+            const tab = tabs[0];
+            if (tab?.id != null && tab.url) {
+                runCreateRecipe(tab);
+            }
+        });
     });
 
     chrome.contextMenus.onClicked.addListener(async (info, tab) => {
