@@ -66,6 +66,9 @@ Mini Mealie is a Chrome extension built using WXT and React, designed to speed u
     WXT_MEALIE_SERVER=https://your-mealie-server.com
     WXT_MEALIE_API_TOKEN=your-api-token-here
     WXT_MEALIE_USERNAME=your-username
+
+    # Optional: richer debugging (`pnpm dev:firefox` already implies DEV — production zip builds need a rebuild after enabling)
+    # WXT_DEBUG_EXTENSION=true
     ```
 
     **Why `.env.local`?**
@@ -101,6 +104,61 @@ Mini Mealie is a Chrome extension built using WXT and React, designed to speed u
     - Go to `chrome://extensions/`
     - Enable **Developer Mode**
     - Click **Load unpacked** and select the `dist` folder
+
+### Firefox
+
+WXT builds a Firefox target separately from Chrome; **both use Manifest V3** in this repo (`pnpm *firefox` passes `--mv3`).
+
+- **Development:** `pnpm dev:firefox` — runs the WXT dev server for **Firefox MV3**. WXT **cannot** auto-open Firefox for Firefox MV3 ([upstream limitation](https://github.com/wxt-dev/wxt/issues/230)), so this script sets `WXT_WEB_EXT_DISABLED=true` and prints the unpacked path. Load **`.output/firefox-mv3-dev/manifest.json`** via `about:debugging` → **Load Temporary Add-on…**, then use **Alt+R** / the dev workflow to reload after edits. Profile-related options in `web-ext.config.ts` apply when web-ext launches the browser; for manual loads you use whatever profile Firefox is already running.
+- **`.env.local` / Mealie URL + token:** Pre-fill from `WXT_MEALIE_SERVER` / `WXT_MEALIE_API_TOKEN` only happens in **development** (`initDevEnvironment` in `utils/devInit.ts` checks `import.meta.env.DEV`). Use **`pnpm dev:firefox`** after editing `.env.local`, then restart that dev command if you change the file. **`pnpm build:firefox`** + loading `.output/firefox-mv3` is a **production** bundle — it will **not** read `.env.local`; enter credentials in the popup (or build a separate dev workflow).
+- **Production build:** `pnpm build:firefox` — unpacked output under `.output/firefox-mv3/`.
+- **Zip for testers / AMO source bundles:** `pnpm zip:firefox` — archive under `.output/` (name includes the version from `package.json`).
+- **Verify before manual QA:** Run **`pnpm verify`** (compile, ESLint, full Vitest run including badge/menu refresh-queue regressions, `pnpm build:firefox`). Use this as the gate before loading `.output/firefox-mv3/` in the browser so fixes are checked in CI-parity steps first.
+- **Temporary manual load:** Firefox → `about:debugging` → **This Firefox** → **Load Temporary Add-on…** → choose `.output/firefox-mv3/manifest.json` (or the zip, depending on your Firefox version). Temporary installs drop when you quit the browser—use a signed build or normal profile workflow for persistence.
+- **`storage.sync` + temporary loads:** Firefox refuses **`browser.storage.sync`** for temporary add-ons unless the manifest sets an explicit **`browser_specific_settings.gecko.id`** (see `wxt.config.ts`). Without it, **Connect** fails with “storage API will not work with a temporary addon ID”. After changing the id, **remove** the old temporary entry and **load** the new build again.
+
+#### Root-cause debugging (context menu / Activity Logs)
+
+If Activity Logs only show **`auth/getUser`** after you connect, the popup ran — but you still need evidence that the **background** refreshed menus.
+
+1. After **`pnpm verify`** and reloading the add-on, open **`logs.html`** and look for **`recipe-detect` / `badgeMenuRefresh`** rows (persisted from `utils/storage.ts`). The **`data.outcome`** field tells you what happened (examples: **`skipped_no_credentials`**, **`html_mode_static_menu`**, **`skipped_detection_superseded`**, **`menu_updated`**).
+2. **Inspect extension storage (Firefox):** `about:debugging` → **This Firefox** → Mini Mealie → **Inspect**. In the toolbox **Console**, run:
+    ```javascript
+    browser.storage.sync.get(null, console.log);
+    browser.storage.local.get(null, console.log);
+    ```
+    Confirm **`mealieServer`** / **`mealieApiToken`** appear where you expect (sync vs local mirror). If the popup shows “connected” but sync keys are empty while **`chrome.storage.local`** holds credentials, focus on merge/sync writes rather than guessing UI fixes.
+3. In the same toolbox **Console**, check for **errors** from **`background.js`** when switching tabs.
+
+**Sync:** Like Chrome, settings use `chrome.storage.sync` (supported in Firefox as `browser.storage.sync`). Data syncs across devices only if Firefox Sync is enabled with a Mozilla account; otherwise values stay on the local profile.
+
+#### Automated E2E tests
+
+Two harnesses cover the two browsers; both drive the extension end-to-end against your Mealie server.
+
+| Browser | Harness | Command |
+|---|---|---|
+| Firefox | `e2e-geckodriver/` (Python + Selenium + non-snap geckodriver) | `pnpm test:e2e:gecko` |
+| Chrome  | `e2e-playwright/` (Playwright `launchPersistentContext` + `--load-extension`) | `pnpm test:e2e:chromium` |
+
+Setup (one-time):
+```bash
+pnpm test:e2e:gecko:setup        # installs selenium, non-snap geckodriver + Firefox
+pnpm test:e2e:chromium:install   # installs Playwright's Chromium
+```
+
+Run:
+```bash
+pnpm build && pnpm build:firefox
+pnpm test:e2e:chromium  # ~7s
+pnpm test:e2e:gecko     # ~30s
+```
+
+Both read Mealie creds from `WXT_MEALIE_SERVER` / `WXT_MEALIE_API_TOKEN` (or `E2E_MEALIE_*` overrides). `E2E_IMPORT_MODE=url|html` (default `html`), `E2E_RECIPE_URL` to change the test page, `E2E_FIREFOX_HEADLESS=0` to watch the Firefox run.
+
+Why two harnesses: Playwright cannot install unsigned MV3 add-ons in Firefox in this environment; geckodriver's `install_addon(temporary=True)` is Mozilla's officially supported automation path for unsigned extensions.
+
+If the Firefox test reports `Mealie reachability probe: NetworkError`, check Cloudflare / WAF rules on the Mealie origin — bot-protection on `/api` blocks both the test and the extension itself.
 
 ---
 
