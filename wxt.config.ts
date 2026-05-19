@@ -40,6 +40,14 @@ export default defineConfig({
                           // user's storage.sync scope, so treat as permanent.
                           id: 'mini-mealie-firefox@infotune.com',
                           strict_min_version: '109.0',
+                          // Mozilla AMO policy (effective 2025-11-03): every new add-on must
+                          // declare what data leaves the browser. We send the user-supplied
+                          // Mealie API token (authenticationInfo) and the active recipe page
+                          // HTML (websiteContent) to the Mealie server the user configures.
+                          // No data goes to the extension author or any third party.
+                          data_collection_permissions: {
+                              required: ['authenticationInfo', 'websiteContent'],
+                          },
                       },
                   },
               }
