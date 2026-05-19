@@ -36,8 +36,9 @@ export default defineConfig({
                       gecko: {
                           // Required for chrome.storage.sync / browser.storage.sync under temporary
                           // loads (about:debugging). Without an explicit ID, Firefox disables sync storage.
-                          // Change only if you publish under a different AMO add-on id.
-                          id: 'mini-mealie@mrshappy0.github.io',
+                          // Owned namespace for this fork's AMO listing; renaming orphans every
+                          // user's storage.sync scope, so treat as permanent.
+                          id: 'mini-mealie-firefox@infotune.com',
                           strict_min_version: '109.0',
                       },
                   },
