@@ -7,6 +7,26 @@ import { defineConfig } from 'wxt';
 export default defineConfig({
     modules: ['@wxt-dev/module-react'],
     /**
+     * AMO sources zip filter — keep the listed-channel sources artifact free of
+     * local agent docs, local-only E2E harnesses, and test/coverage artifacts.
+     * WXT's source-zip generator walks the filesystem, not git, so `.gitignore`
+     * and `.git/info/exclude` do NOT apply here. Hidden files and node_modules
+     * are excluded by default; everything below is project-specific.
+     */
+    zip: {
+        excludeSources: [
+            'MEMORY.md',
+            'CLAUDE.md',
+            'AGENTS.md',
+            'PLAN.md',
+            'REQUIREMENTS.md',
+            'e2e-geckodriver/**',
+            'e2e-playwright/**',
+            'coverage/**',
+            'html/**',
+        ],
+    },
+    /**
      * WXT cannot auto-open Firefox when targeting MV3 (see wxt-dev/wxt#230). `pnpm dev:firefox`
      * sets `WXT_WEB_EXT_DISABLED=true` so the dev server runs; load `.output/firefox-mv3-dev/`
      * manually from about:debugging.
