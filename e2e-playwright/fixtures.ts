@@ -6,6 +6,10 @@ import { chromeExtensionDir } from '../e2e-shared/config';
  * Chromium E2E fixture. Mirrors Chrome's `--load-extension=…` flow (Playwright's
  * "Chrome extensions" pattern). Chrome MV3 uses a background service worker, so the
  * extension id comes from `context.serviceWorkers()`.
+ *
+ * PR gate / mealie-latest: Playwright's bundled Chromium (`channel: 'chromium'`).
+ * chrome-latest canary: Chrome for Testing via PLAYWRIGHT_CHROME_EXECUTABLE (still
+ * supports side-loading; branded Google Chrome does not).
  */
 
 export type MiniMealieFixtures = {
@@ -16,26 +20,25 @@ export type MiniMealieFixtures = {
     extensionBridgePage: Page;
 };
 
-/** Playwright channel: bundled `chromium` (PR gate) or `chrome` (canary chrome-latest). */
-function playwrightChromeChannel(): 'chromium' | 'chrome' {
-    const raw = process.env.PLAYWRIGHT_CHROME_CHANNEL?.trim();
-    if (!raw || raw === 'chromium') return 'chromium';
-    if (raw === 'chrome') return 'chrome';
-    throw new Error(
-        `PLAYWRIGHT_CHROME_CHANNEL must be empty, "chromium", or "chrome" (got ${JSON.stringify(raw)})`,
-    );
+function launchPersistentOptions(pathToExtension: string) {
+    const args = [
+        `--disable-extensions-except=${pathToExtension}`,
+        `--load-extension=${pathToExtension}`,
+    ];
+    const executablePath = process.env.PLAYWRIGHT_CHROME_EXECUTABLE?.trim();
+    if (executablePath) {
+        return { executablePath, args };
+    }
+    return { channel: 'chromium' as const, args };
 }
 
 export const test = base.extend<MiniMealieFixtures>({
     context: async ({}, use) => {
         const pathToExtension = chromeExtensionDir();
-        const browserContext = await chromium.launchPersistentContext('', {
-            channel: playwrightChromeChannel(),
-            args: [
-                `--disable-extensions-except=${pathToExtension}`,
-                `--load-extension=${pathToExtension}`,
-            ],
-        });
+        const browserContext = await chromium.launchPersistentContext(
+            '',
+            launchPersistentOptions(pathToExtension),
+        );
         await use(browserContext);
         await browserContext.close();
     },
