@@ -89,6 +89,7 @@ pnpm test:e2e:down
 | `MEALIE_IMAGE` / `MEALIE_PORT` | `…/mealie:v3.20.1` / `9925` | Docker Mealie image / host port |
 | `E2E_FIREFOX_XPI` | newest `.output/*-firefox.zip` | Firefox add-on to install |
 | `FIREFOX_VER` | `142.0` (pinned) | Firefox version `setup.sh` fetches; set `latest` for the canary |
+| `PLAYWRIGHT_CHROME_CHANNEL` | bundled `chromium` | set `chrome` to drive installed Google Chrome stable (canary) |
 | `E2E_HEADLESS` | on | set `0` to watch Firefox run |
 
 ## CI
@@ -116,20 +117,27 @@ names the culprit:
 
 | Leg | Overrides | Pinned | Jobs |
 | --- | --- | --- | --- |
-| `mealie-latest` | Mealie → `:latest` | Firefox `142.0` | Chrome + Firefox |
+| `mealie-latest` | Mealie → `:latest` | Firefox `142.0`, Playwright Chromium | Chrome + Firefox |
 | `firefox-latest` | Firefox → `latest` (also catches geckodriver/Firefox skew) | Mealie `v3.20.1` | Firefox only |
+| `chrome-latest` | Google Chrome stable via `PLAYWRIGHT_CHROME_CHANNEL=chrome` | Mealie `v3.20.1`, Firefox `142.0`, Playwright version | Chrome only |
 
-Chromium has no canary leg **by deliberate tradeoff**. Mealie/Firefox legs are *proactive*
-(weekly against real upstream `latest`). Chromium coverage stays *reactive*: a new Chromium only
-arrives via a Dependabot Playwright bump, which the PR gate then tests — and that can lag real
-Chrome stable. Playwright/Chromium has historically been stabler here than Gecko, so we accept
-weaker early warning on the primary browser for now; see
-[#183](https://github.com/mrshappy0/mini-mealie/issues/183) for a possible future
-`chromium-latest` leg if that gap starts to hurt. `schedule` only fires from the default
-branch; trigger the canary manually with "Run workflow" otherwise.
+`chrome-latest` keeps Playwright pinned and installs Google Chrome stable on the runner
+(`pnpm test:e2e:chrome:install`), then drives it with Playwright's `channel: 'chrome'`. Do **not**
+try `playwright install chromium@latest` — that fights Playwright's bundled-browser pairing.
+
+Before the suite, a smoke step (`pnpm test:e2e:chrome:smoke`) launches that Chrome with no
+extension: smoke fail → Playwright↔Chrome/tooling (or install/path); smoke pass + suite fail →
+product / Chrome-behavior. A red leg is early warning and triage, not automatic proof that Chrome
+broke the extension. (Closes the gap tracked in
+[#183](https://github.com/mrshappy0/mini-mealie/issues/183).)
+
+`schedule` only fires from the default branch; trigger the canary manually with "Run workflow"
+otherwise.
 
 The `firefox-latest` leg runs **only** the Firefox job (Chrome would ignore `FIREFOX_VER` and
-duplicate the pinned PR-gate Chrome run). The `mealie-latest` leg still runs both browsers.
+duplicate the pinned PR-gate Chrome run). The `chrome-latest` leg runs **only** the Chrome job
+(Firefox would ignore `PLAYWRIGHT_CHROME_CHANNEL`). The `mealie-latest` leg still runs both
+browsers.
 
 To run on your own server instead of GitHub-hosted, change `runs-on` to `[self-hosted]` —
 just ensure Docker is installed and the runner user is in the `docker` group. On a persistent
