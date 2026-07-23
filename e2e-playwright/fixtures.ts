@@ -16,11 +16,21 @@ export type MiniMealieFixtures = {
     extensionBridgePage: Page;
 };
 
+/** Playwright channel: bundled `chromium` (PR gate) or `chrome` (canary chrome-latest). */
+function playwrightChromeChannel(): 'chromium' | 'chrome' {
+    const raw = process.env.PLAYWRIGHT_CHROME_CHANNEL?.trim();
+    if (!raw || raw === 'chromium') return 'chromium';
+    if (raw === 'chrome') return 'chrome';
+    throw new Error(
+        `PLAYWRIGHT_CHROME_CHANNEL must be empty, "chromium", or "chrome" (got ${JSON.stringify(raw)})`,
+    );
+}
+
 export const test = base.extend<MiniMealieFixtures>({
     context: async ({}, use) => {
         const pathToExtension = chromeExtensionDir();
         const browserContext = await chromium.launchPersistentContext('', {
-            channel: 'chromium',
+            channel: playwrightChromeChannel(),
             args: [
                 `--disable-extensions-except=${pathToExtension}`,
                 `--load-extension=${pathToExtension}`,
