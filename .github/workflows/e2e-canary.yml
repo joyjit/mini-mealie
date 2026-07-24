@@ -22,9 +22,11 @@ name: E2E Canary (latest upstream deps)
 
 on:
     schedule:
-        # Weekly, Mondays 06:00 UTC. Mealie and Firefox release roughly monthly, so weekly is
-        # plenty; bump to a daily cron if you want faster signal.
-        - cron: '0 6 * * 1'
+        # FORK-ONLY schedule (joyjit/mini-mealie): Saturdays 06:00 UTC — two days before
+        # upstream mrshappy0 (Mondays 06:00 UTC, cron '0 6 * * 1'). Gives early signal on
+        # the fork before the upstream canary. Do not include this cron change in PRs to
+        # upstream; restore Monday there.
+        - cron: '0 6 * * 6'
     workflow_dispatch:
 
 permissions:
