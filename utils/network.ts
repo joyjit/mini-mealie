@@ -119,7 +119,7 @@ export async function createRecipeFromURL(
     includeCategories = false,
 ): Promise<CreateRecipeResult> {
     try {
-        const fetchUrl = new URL('/api/recipes/create/url', server).href;
+        const fetchUrl = `${normalizeMealieServerBaseUrl(server)}/api/recipes/create/url`;
         const response = (await fetch(fetchUrl, {
             method: 'POST',
             headers: {
@@ -161,7 +161,7 @@ export async function createRecipeFromHTML(
     includeCategories = false,
 ): Promise<CreateRecipeResult> {
     try {
-        const fetchUrl = new URL('/api/recipes/create/html-or-json', server).href;
+        const fetchUrl = `${normalizeMealieServerBaseUrl(server)}/api/recipes/create/html-or-json`;
         const response = (await fetch(fetchUrl, {
             method: 'POST',
             headers: {
@@ -198,65 +198,50 @@ export const getUser = async (
     url: string,
     token: string,
 ): Promise<User | { errorMessage: string }> => {
-    const { logEvent, sanitizeUrl } = await import('./logging');
+    const { withOperation, sanitizeUrl } = await import('./logging');
 
-    await logEvent({
-        level: 'info',
-        feature: 'auth',
-        action: 'getUser',
-        phase: 'start',
-        message: 'Fetching user profile',
-        data: { server: sanitizeUrl(normalizeMealieServerBaseUrl(url)) },
-    });
+    const base = normalizeMealieServerBaseUrl(url);
+    const data: { server: string; username?: string } = { server: sanitizeUrl(base) };
 
     try {
-        const base = normalizeMealieServerBaseUrl(url);
-        const authToken = token.trim();
-
-        const res = await fetch(`${base}/api/users/self`, {
-            headers: {
-                Authorization: `Bearer ${authToken}`,
-                'Content-Type': 'application/json',
+        return await withOperation(
+            {
+                feature: 'auth',
+                action: 'getUser',
+                message: 'Fetching user profile',
+                data,
             },
-        });
-        if (!res.ok) {
-            throw new Error(`Get User Failed - status: ${res.status}`);
-        }
-        const user = await res.json();
+            async () => {
+                const authToken = token.trim();
 
-        if (
-            !user ||
-            typeof user !== 'object' ||
-            typeof (user as Record<string, unknown>).username !== 'string'
-        ) {
-            return {
-                errorMessage:
-                    'Mealie response did not include a username — check your server URL and Mealie version.',
-            };
-        }
+                const res = await fetch(`${base}/api/users/self`, {
+                    headers: {
+                        Authorization: `Bearer ${authToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                });
+                if (!res.ok) {
+                    throw new Error(`Get User Failed - status: ${res.status}`);
+                }
+                const user = await res.json();
 
-        await logEvent({
-            level: 'info',
-            feature: 'auth',
-            action: 'getUser',
-            phase: 'success',
-            message: 'User profile fetched',
-            data: { server: sanitizeUrl(base), username: (user as User).username },
-        });
+                if (
+                    !user ||
+                    typeof user !== 'object' ||
+                    typeof (user as Record<string, unknown>).username !== 'string'
+                ) {
+                    return {
+                        errorMessage:
+                            'Mealie response did not include a username — check your server URL and Mealie version.',
+                    };
+                }
 
-        return user as User;
+                data.username = (user as User).username;
+                return user as User;
+            },
+            (result) => !('errorMessage' in result),
+        );
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-
-        await logEvent({
-            level: 'error',
-            feature: 'auth',
-            action: 'getUser',
-            phase: 'failure',
-            message: `Failed to fetch user: ${errorMessage}`,
-            data: { server: sanitizeUrl(normalizeMealieServerBaseUrl(url)) },
-        });
-
         if (error instanceof Error) {
             return { errorMessage: error.message };
         }
@@ -359,7 +344,7 @@ export async function findRecipeByURL(
 
         // Fetch recent recipes (more likely to match) and filter client-side
         // This works around Mealie's exact string matching in queryFilter
-        const apiUrl = new URL('/api/recipes', server);
+        const apiUrl = new URL(`${normalizeMealieServerBaseUrl(server)}/api/recipes`);
         apiUrl.searchParams.set('perPage', '100'); // Fetch more to increase match chance
         apiUrl.searchParams.set('orderBy', 'dateUpdated');
         apiUrl.searchParams.set('orderDirection', 'desc');
@@ -455,7 +440,7 @@ export async function searchRecipesByName(
 
     try {
         // Construct the API query with search parameter
-        const apiUrl = new URL('/api/recipes', server);
+        const apiUrl = new URL(`${normalizeMealieServerBaseUrl(server)}/api/recipes`);
         apiUrl.searchParams.set('search', name);
         apiUrl.searchParams.set('perPage', '5');
 

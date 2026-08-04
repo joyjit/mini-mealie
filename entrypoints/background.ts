@@ -9,7 +9,6 @@ export default defineBackground(() => {
 
         updateTimer = setTimeout(() => {
             updateTimer = undefined;
-            // TODO: investigate if we can await this call
             void checkStorageAndUpdateBadge();
         }, 250);
     };
@@ -29,7 +28,6 @@ export default defineBackground(() => {
 
         // Auto-open logs page in dev mode (only on install/update, not every startup)
         if (import.meta.env.DEV) {
-            // TODO: investigate if we can await this call
             void chrome.tabs.create({ url: chrome.runtime.getURL('logs.html') });
         }
     });
@@ -173,7 +171,7 @@ async function handleViewSpecificDuplicate(slug: string) {
             return;
         }
 
-        const normalizedMealieServer = mealieServer.replace(/\/+$/, '');
+        const normalizedMealieServer = normalizeMealieServerBaseUrl(mealieServer);
         const user = await getUser(mealieServer, mealieApiToken);
         const groupSlug = 'groupSlug' in user ? user.groupSlug : undefined;
 
@@ -188,7 +186,7 @@ async function handleViewSpecificDuplicate(slug: string) {
             return;
         }
 
-        const recipeUrl = `${normalizedMealieServer}/g/${groupSlug}/r/${slug}`;
+        const recipeUrl = `${normalizedMealieServer}/g/${encodeURIComponent(groupSlug)}/r/${encodeURIComponent(slug)}`;
         await logEvent({
             level: 'info',
             feature: 'duplicate-detect',
@@ -238,7 +236,7 @@ async function handleViewDuplicate(url: string, menuId: string) {
             return;
         }
 
-        const normalizedServer = mealieServer.replace(/\/+$/, '');
+        const normalizedServer = normalizeMealieServerBaseUrl(mealieServer);
         const user = await getUser(mealieServer, mealieApiToken);
         const groupSlug = 'groupSlug' in user ? user.groupSlug : undefined;
 
