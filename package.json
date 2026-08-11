@@ -43,7 +43,7 @@
         "@eslint/js": "^10.0.1",
         "@html-eslint/parser": "^0.64.0",
         "@playwright/test": "^1.62.1",
-        "@semantic-release/git": "^10.0.1",
+        "@semantic-release/git": "^11.0.1",
         "@testing-library/jest-dom": "^7.0.0",
         "@testing-library/react": "^16.3.2",
         "@testing-library/user-event": "^14.6.1",
@@ -66,9 +66,9 @@
         "eslint-plugin-prettier": "^5.5.5",
         "eslint-plugin-react": "github:ledsun/eslint-plugin-react#update-deprecated-calls-v8",
         "eslint-plugin-security": "^4.0.0",
-        "eslint-plugin-simple-import-sort": "^13.0.0",
+        "eslint-plugin-simple-import-sort": "^14.0.0",
         "globals": "^17.8.0",
-        "jsdom": "^29.1.1",
+        "jsdom": "^30.0.1",
         "playwright": "^1.62.1",
         "prettier": "^3.9.6",
         "resend": "^6.18.1",
@@ -78,7 +78,7 @@
         "typescript": "npm:@typescript/typescript6@^6.0.2",
         "typescript-eslint": "^8.65.0",
         "vitest": "^4.1.10",
-        "wxt": "^0.20.27"
+        "wxt": "^0.21.3"
     },
     "packageManager": "pnpm@11.2.2"
 }
